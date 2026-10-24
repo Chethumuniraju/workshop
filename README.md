@@ -1,21 +1,15 @@
-# Workshop Booking App
+# Workshop Booking Application
 
-A React and Express application for workshop discovery and booking. Users can register, sign in, book one seat per workshop, review bookings, and cancel them. Admins can create, edit, and delete upcoming workshops; admins cannot book workshops.
+A full-stack application for browsing workshops, booking seats, and managing workshops through an admin account.
 
-Backend design documentation:
+## 1. Installation and Setup
 
-- [Backend architecture and OOP concepts](./backend/README.md)
-- [Backend object lifecycle and request flows](./backend/OBJECT-LIFECYCLE.md)
-
-## Requirements
-
+### Prerequisites
 - Node.js 18+
+- MongoDB configured as a replica set
 - npm
-- MongoDB configured as a replica set (MongoDB Atlas works)
 
-## Setup
-
-### Backend
+### Backend Setup
 
 ```powershell
 cd backend
@@ -23,88 +17,114 @@ npm install
 Copy-Item .env.example .env
 ```
 
-Edit `backend/.env`:
+Configure `backend/.env` with your MongoDB connection string, JWT secret, client URL, and seed credentials.
 
-- Set `MONGODB_URI` to your MongoDB replica-set or Atlas connection string.
-- Replace `JWT_SECRET` with a random value of at least 32 characters.
-- Set unique seed emails and passwords. Seed passwords must be 8–128 characters.
-- Set `CLIENT_URL` to your frontend origin if it differs from `http://localhost:5173`.
-
-Seed the accounts and sample workshops, then start the server:
+Start the backend:
 
 ```powershell
 npm run seed
 npm run dev
 ```
 
-The seed command creates or updates the admin and two user accounts, plus three future workshops. Login details are the values of `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`, `SEED_USER_ONE_EMAIL`/`SEED_USER_ONE_PASSWORD`, and `SEED_USER_TWO_EMAIL`/`SEED_USER_TWO_PASSWORD` in your local `backend/.env`. Change the example values before seeding. Never commit `.env`.
+Backend: `http://localhost:5000`
 
-### Frontend
+### Frontend Setup
 
-In a separate terminal:
+Open another terminal:
 
 ```powershell
 cd frontend
 npm install
 Copy-Item .env.example .env
+```
+
+Configure `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:5000
+```
+
+Start the frontend:
+
+```powershell
 npm run dev
 ```
 
-The frontend runs at `http://localhost:5173`; the API defaults to `http://localhost:5000`. Set `VITE_API_URL` in `frontend/.env` when the backend uses another URL.
+Frontend: `http://localhost:5173`
 
-## Features
+## 2. High-Level Architecture
 
-- Login and registration with server-side validation, JWT persistence, and session restoration.
-- Protected routes for authenticated users and admins.
-- Paginated upcoming workshops with seats remaining.
-- Users see **Booked** for their active reservation and **Full** when no seats remain. Booking actions are disabled while a request is in progress.
-- Users can review bookings and cancel an active booking.
-- Admins can create, edit, and delete upcoming workshops from `/admin`. Admins cannot create bookings.
-- Workshop deletion is refused if any booking history exists; reducing total seats below the number already booked is also refused.
-- Joi validation, centralized API errors, role authorization, and authenticated profile/list endpoints.
-- React 18 with Formik and Yup validation for admin workshop forms.
-
-## API
-
-| Method | Path | Access | Purpose |
-| --- | --- | --- | --- |
-| POST | `/api/auth/register` | Public | Register a regular user |
-| POST | `/api/auth/login` | Public | Login and receive a JWT |
-| GET | `/api/auth/me` | Authenticated | Restore the current user profile |
-| GET | `/api/workshops?page=1&limit=10` | Authenticated | List future workshops with `seatsLeft` and pagination |
-| POST | `/api/workshops` | Admin | Create a workshop |
-| PATCH | `/api/workshops/:workshopId` | Admin | Update a workshop |
-| DELETE | `/api/workshops/:workshopId` | Admin | Delete a workshop with no booking history |
-| POST | `/api/workshops/:workshopId/book` | User | Book a seat |
-| GET | `/api/bookings/me` | User | List bookings with workshop details |
-| POST | `/api/bookings/:bookingId/cancel` | User, owner | Cancel a booking |
-
-The backend retains `/api/bookings` (POST), `/api/bookings/mine` (GET), and PATCH cancellation aliases for compatibility.
-
-## Overbooking protection
-
-Booking creation runs in a MongoDB transaction. The seat reservation uses a conditional atomic update that succeeds only while `bookedSeats < totalSeats`; the booking record is created in the same transaction. A partial unique index prevents duplicate active bookings for a user/workshop pair. Cancellation updates booking status and releases one seat in a transaction. MongoDB transactions require a replica set, including for local development.
-
-## Local checks
-
-```powershell
-cd frontend
-npm run lint
-npm run build
+```mermaid
+flowchart TD
+    A[React Frontend] --> B[Axios API Client]
+    B --> C[Express REST API]
+    C --> D[Middleware and Validation]
+    D --> E[Controllers]
+    E --> F[Services]
+    F --> G[Repositories]
+    G --> H[(MongoDB)]
 ```
 
-## Project stages
+- **Frontend:** React, Redux Toolkit, React Router, and Material UI.
+- **Backend:** Node.js and Express for API handling.
+- **Authentication:** JWT authentication and role-based authorization.
+- **Validation:** Joi for validating incoming requests.
+- **Database:** MongoDB for users, workshops, and bookings.
 
-The project is organized in incremental commits:
+## 3. Low-Level Architecture
 
-1. Project structure and setup
-2. Database configuration, models, and repositories
-3. Backend middleware, validation, and API
-4. Frontend application
-5. Setup and architecture documentation
+### Backend
 
-## Remaining work
+- `config/` — Environment and database configuration.
+- `routes/` — API endpoint definitions.
+- `middleware/` — Authentication, authorization, validation, and error handling.
+- `validators/` — Request validation schemas.
+- `controllers/` — Handle requests and responses.
+- `services/` — Business logic and booking workflows.
+- `repositories/` — Database operations.
+- `models/` — MongoDB schemas and indexes.
+- `app.js` — Express application configuration.
+- `server.js` — Database connection and server startup.
 
-- The optional admin view showing the identities of workshop attendees is not implemented.
-- No hosted demo is deployed.
-- UI/browser and database integration require a configured local MongoDB/Atlas instance and the seeded accounts.
+### Frontend
+
+- `pages/` — Login, registration, workshops, bookings, and admin screens.
+- `components/` — Reusable UI components.
+- `features/` — Authentication, workshop, and booking logic.
+- `services/` — API communication using Axios.
+- `routes/` — Application routing and protected routes.
+- `app/` — Redux store and hooks.
+
+## 4. Booking Flow
+
+1. The user logs in and receives a JWT.
+2. The frontend requests available workshops from the backend.
+3. The user selects a workshop and submits a booking request.
+4. The backend validates the request and checks seat availability.
+5. A MongoDB transaction reserves a seat and creates the booking.
+6. The frontend displays the booking result and updates availability.
+
+**Booking safety:** Conditional atomic updates prevent overbooking, transactions keep booking records and seat counts consistent, and a unique index prevents duplicate active bookings.
+
+## 5. Pending Work
+
+### Reliability and Testing
+- [ ] Add automated backend and frontend tests.
+- [ ] Test concurrent bookings and transaction rollback.
+- [ ] Add safe retry handling for database failures.
+- [ ] Implement idempotency for requests retried after uncertain outcomes.
+
+### Performance and Scaling
+- [ ] Review MongoDB connection-pool settings.
+- [ ] Add caching for suitable read-heavy data if needed.
+- [ ] Optimize database queries and indexes based on measurements.
+- [ ] Load-test concurrent booking requests.
+
+### Production Readiness
+- [ ] Add structured logging and monitoring.
+- [ ] Improve health checks and database recovery.
+- [ ] Review production security settings.
+- [ ] Deploy the application.
+- [ ] Add an admin attendee-management view if required.
+
+**Note:** Automated test files have not yet been added. These are planned improvements, not completed features.
