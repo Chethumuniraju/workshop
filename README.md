@@ -204,6 +204,8 @@ flowchart TD
 
 ## 6. Pending Work
 
+### Functionity 
+- [ ] Compltetion of the workshops not handeled 
 ### Reliability and Testing
 - [ ] Add automated backend and frontend tests.
 - [ ] Test concurrent bookings and transaction rollback.
@@ -215,7 +217,7 @@ flowchart TD
 - [ ] Add caching for suitable read-heavy data if needed.
 - [ ] Optimize database queries and indexes based on measurements.
 - [ ] Load-test concurrent booking requests.
-
+- [ ] Threading 
 ### Production Readiness
 - [ ] Add structured logging and monitoring.
 - [ ] Improve health checks and database recovery.
